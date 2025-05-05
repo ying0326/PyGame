@@ -11,7 +11,7 @@ class Player(GameObject):
         GameObject.__init__(self, playground)
         self._moveScale = 0.5 * sensitivity
         __parent_path = Path(__file__).parents[1]
-        self.__player_path = __parent_path / 'res' / 'pngtree-air-force-fighter-cartoon-black-png-image_3979329.png'
+        self.__player_path = __parent_path / 'res' / 'airplan.png'
         self._image = pygame.image.load(self.__player_path)
         self._center = self._x + self._image.get_rect().w / 2, self._y + self._image.get_rect().h / 2
         self._radius = 0.3 * math.hypot(self._image.get_rect().w, self._image.get_rect().h)  # 碰撞半徑
@@ -43,3 +43,4 @@ class Player(GameObject):
                 m.hp = -1
                 m.collided = True
                 m.available = False
+
