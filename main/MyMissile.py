@@ -2,7 +2,6 @@ from pathlib import Path
 import pygame
 from gobject import GameObject
 
-# 飛彈類別
 class MyMissile(GameObject):
     def __init__(self, playground, xy, sensitivity=1):
         GameObject.__init__(self, playground)
@@ -11,16 +10,16 @@ class MyMissile(GameObject):
         self.__missile_path = __parent_path / 'res' / 'missile.png'
         self._image = pygame.image.load(self.__missile_path)
 
+        # ✅ 傳入 xy 為「發射中心點」，自動居中飛彈
+        self._x = xy[0] - self._image.get_rect().w / 2
+        self._y = xy[1]
+
         self._center = (
-            xy[0] + self._image.get_rect().w / 2,
-            xy[1] + self._image.get_rect().w / 2
+            self._x + self._image.get_rect().w / 2,
+            self._y + self._image.get_rect().h / 2
         )
         self._radius = self._image.get_rect().w / 2
 
-        self._x = xy[0]
-        self._y = xy[1]
-
-        # 在這邊只需要向上飛，且要當飛出畫面就標記無效
         self._objectBound = (
             0,
             self._playground[0],
@@ -37,7 +36,7 @@ class MyMissile(GameObject):
             self._available = False
         self._center = (
             self._x + self._image.get_rect().w / 2,
-            self._y + self._image.get_rect().w / 2
+            self._y + self._image.get_rect().h / 2
         )
 
     def collision_detect(self, enemies):

@@ -1,7 +1,7 @@
 import pygame
 from pathlib import Path
 from player import Player
-from MyMissile import MyMissile  # 你提供的 MyMissile 類別
+from MyMissile import MyMissile
 
 def main():
     pygame.init()
@@ -13,47 +13,45 @@ def main():
     pygame.display.set_caption("pygame")
     playground = [screen_width, screen_height]
 
-    # 載入 icon
+    # 圖示與資源路徑
     parent_path = Path(__file__).parents[1]
     res_path = parent_path / 'res'
     icon_path = res_path / 'airplan.png'
+    background_path = res_path / 'background.png'
+
+    # 設定 icon 與背景
     icon = pygame.image.load(icon_path)
     pygame.display.set_icon(icon)
+    background = pygame.image.load(background_path).convert()
+    background = pygame.transform.scale(background, (screen_width, screen_height))
 
-    # 背景
-    background = pygame.Surface(screen.get_size()).convert()
-    background.fill((50, 50, 50))
-
-    # 玩家與參數初始化
+    # 玩家與參數
     fps = 120
     clock = pygame.time.Clock()
     moving_scale = 600 / fps
     player = Player(playground=playground, sensitivity=moving_scale)
 
-    # 控制鍵紀錄
     keyCountX = 0
     keyCountY = 0
-
-    # 飛彈設定
     Missiles = []
-    launchMissile = pygame.USEREVENT + 1  # 自動發射事件 ID
+    launchMissile = pygame.USEREVENT + 1
 
     running = True
     while running:
-        # 處理事件
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
 
-            # 自動發射事件
+            # ✅ 自動發射：兩顆飛彈從中心兩側發射
             if event.type == launchMissile:
-                m_x = player.xy[0] + 20
-                m_y = player.xy[1]
-                Missiles.append(MyMissile(xy=(m_x, m_y), playground=playground, sensitivity=moving_scale))
-                m_x = player.xy[0] + 80
-                Missiles.append(MyMissile(xy=(m_x, m_y), playground=playground, sensitivity=moving_scale))
+                center_x = player.x + player.image.get_width() / 2
+                m_y = player.y
+                plane_left = center_x - 10
+                plane_right = center_x + 10
+                Missiles.append(MyMissile(xy=(plane_left, m_y), playground=playground, sensitivity=moving_scale))
+                Missiles.append(MyMissile(xy=(plane_right, m_y), playground=playground, sensitivity=moving_scale))
 
-            # 按鍵按下
+            # 控制與發射鍵
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_a:
                     keyCountX += 1
@@ -68,14 +66,14 @@ def main():
                     keyCountY += 1
                     player.to_the_top()
                 if event.key == pygame.K_SPACE:
-                    m_x = player.x + 20
+                    center_x = player.x + player.image.get_width() / 2-5
                     m_y = player.y
-                    Missiles.append(MyMissile(xy=(m_x, m_y), playground=playground, sensitivity=moving_scale))
-                    m_x = player.x + 80
-                    Missiles.append(MyMissile(xy=(m_x, m_y), playground=playground, sensitivity=moving_scale))
-                    pygame.time.set_timer(launchMissile, 400)  # 每 400 ms 自動發射
+                    plane_left = center_x - 30
+                    plane_right = center_x + 20
+                    Missiles.append(MyMissile(xy=(plane_left, m_y), playground=playground, sensitivity=moving_scale))
+                    Missiles.append(MyMissile(xy=(plane_right, m_y), playground=playground, sensitivity=moving_scale))
+                    pygame.time.set_timer(launchMissile, 400)
 
-            # 放開按鍵
             if event.type == pygame.KEYUP:
                 if event.key in (pygame.K_a, pygame.K_d):
                     if keyCountX == 1:
@@ -90,7 +88,7 @@ def main():
                     else:
                         keyCountY -= 1
                 if event.key == pygame.K_SPACE:
-                    pygame.time.set_timer(launchMissile, 0)  # 停止自動發射
+                    pygame.time.set_timer(launchMissile, 0)
 
         # 更新邏輯
         player.update()
@@ -98,7 +96,7 @@ def main():
         for m in Missiles:
             m.update()
 
-        # 畫面更新
+        # 畫面渲染
         screen.blit(background, (0, 0))
         for m in Missiles:
             screen.blit(m.image, m.xy)
