@@ -1,9 +1,9 @@
 import pygame
 from pathlib import Path
-from player import Player  # ✅ 請確認你有 player.py 檔案，且 Player 類別定義在裡面
+from player import Player
+from MyMissile import MyMissile  # 你提供的 MyMissile 類別
 
 def main():
-    # 初始化 Pygame
     pygame.init()
 
     # 畫面設定
@@ -13,30 +13,31 @@ def main():
     pygame.display.set_caption("pygame")
     playground = [screen_width, screen_height]
 
-    # 載入 icon（圖示）
-    parent_path = Path(__file__).parents[1]  # ⬅ 若你專案不是這樣結構，請改成 Path(__file__).parent
+    # 載入 icon
+    parent_path = Path(__file__).parents[1]
     res_path = parent_path / 'res'
     icon_path = res_path / 'airplan.png'
     icon = pygame.image.load(icon_path)
     pygame.display.set_icon(icon)
 
-    # 建立背景
+    # 背景
     background = pygame.Surface(screen.get_size()).convert()
-    background.fill((50, 50, 50))  # 深灰背景
+    background.fill((50, 50, 50))
 
-    # 建立時脈
+    # 玩家與參數初始化
     fps = 120
     clock = pygame.time.Clock()
     moving_scale = 600 / fps
-
-    # 建立玩家
     player = Player(playground=playground, sensitivity=moving_scale)
 
-    # 鍵盤按鍵計數（處理多鍵同時按下）
+    # 控制鍵紀錄
     keyCountX = 0
     keyCountY = 0
 
-    # 遊戲主迴圈
+    # 飛彈設定
+    Missiles = []
+    launchMissile = pygame.USEREVENT + 1  # 自動發射事件 ID
+
     running = True
     while running:
         # 處理事件
@@ -44,7 +45,15 @@ def main():
             if event.type == pygame.QUIT:
                 running = False
 
-            # 按下按鍵
+            # 自動發射事件
+            if event.type == launchMissile:
+                m_x = player.xy[0] + 20
+                m_y = player.xy[1]
+                Missiles.append(MyMissile(xy=(m_x, m_y), playground=playground, sensitivity=moving_scale))
+                m_x = player.xy[0] + 80
+                Missiles.append(MyMissile(xy=(m_x, m_y), playground=playground, sensitivity=moving_scale))
+
+            # 按鍵按下
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_a:
                     keyCountX += 1
@@ -58,6 +67,13 @@ def main():
                 if event.key == pygame.K_w:
                     keyCountY += 1
                     player.to_the_top()
+                if event.key == pygame.K_SPACE:
+                    m_x = player.x + 20
+                    m_y = player.y
+                    Missiles.append(MyMissile(xy=(m_x, m_y), playground=playground, sensitivity=moving_scale))
+                    m_x = player.x + 80
+                    Missiles.append(MyMissile(xy=(m_x, m_y), playground=playground, sensitivity=moving_scale))
+                    pygame.time.set_timer(launchMissile, 400)  # 每 400 ms 自動發射
 
             # 放開按鍵
             if event.type == pygame.KEYUP:
@@ -73,12 +89,19 @@ def main():
                         player.stop_y()
                     else:
                         keyCountY -= 1
+                if event.key == pygame.K_SPACE:
+                    pygame.time.set_timer(launchMissile, 0)  # 停止自動發射
 
         # 更新邏輯
         player.update()
+        Missiles = [m for m in Missiles if m.available]
+        for m in Missiles:
+            m.update()
 
-        # 畫面渲染
+        # 畫面更新
         screen.blit(background, (0, 0))
+        for m in Missiles:
+            screen.blit(m.image, m.xy)
         screen.blit(player.image, player.xy)
         pygame.display.update()
         clock.tick(fps)
