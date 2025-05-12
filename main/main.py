@@ -4,6 +4,24 @@ from pathlib import Path
 from player import Player
 from MyMissile import MyMissile
 
+# 爆炸特效類別
+class Explosion:
+    def __init__(self, x, y, image):
+        self.x = x
+        self.y = y
+        self.image = image
+        self.counter = 0
+        self.duration = 20  # 爆炸效果持續20幀
+
+    def update(self):
+        self.counter += 1
+
+    def is_finished(self):
+        return self.counter > self.duration
+
+    def draw(self, screen):
+        screen.blit(self.image, (self.x, self.y))
+
 # 敵機類別
 class Enemy:
     def __init__(self, x, y, image):
@@ -13,8 +31,8 @@ class Enemy:
         self.rect = self.image.get_rect(topleft=(self.x, self.y))
         self.hit = False
         self.available = True
-        self.speed_x = random.randint(1, 3) * random.choice([-1, 1])
-        self.speed_y = 2
+        self.speed_x = random.randint(1, 5) * random.choice([-1, 1])
+        self.speed_y = random.randint(2, 6)
 
     def update(self):
         self.x += self.speed_x
@@ -29,10 +47,13 @@ class Enemy:
             self.available = False
 
     def draw(self, screen):
-        if self.hit:
-            pygame.draw.rect(screen, (255, 0, 0), self.rect)
-        else:
+        if not self.hit:
             screen.blit(self.image, (self.x, self.y))
+
+# 顯示分數（紅色字體）
+def display_score(screen, score, font):
+    score_text = font.render(f"Score: {score}", True, (255, 0, 0))  # 紅色字體
+    screen.blit(score_text, (screen.get_width() - 150, 10))
 
 def main():
     pygame.init()
@@ -50,6 +71,7 @@ def main():
     icon_path = res_path / 'airplan.png'
     background_path = res_path / 'background.png'
     enemy_path = res_path / 'enemy.png'
+    explosion_path = res_path / 'explosion.png'
 
     # 設定 icon 與背景
     icon = pygame.image.load(icon_path)
@@ -57,8 +79,12 @@ def main():
     background = pygame.image.load(background_path).convert()
     background = pygame.transform.scale(background, (screen_width, screen_height))
 
-    # 敵機圖片
+    # 敵機圖片和爆炸圖片
     enemy_image = pygame.image.load(enemy_path).convert_alpha()
+    explosion_image = pygame.image.load(explosion_path).convert_alpha()
+
+    # 字體設定
+    font = pygame.font.SysFont("Arial", 28)
 
     # 玩家與參數
     fps = 120
@@ -66,52 +92,50 @@ def main():
     moving_scale = 1000 / fps
     player = Player(playground=playground, sensitivity=moving_scale)
 
+    # 計分變數
+    score = 0
+
     Missiles = []
     Enemies = []
+    Explosions = []
     launchMissile = pygame.USEREVENT + 1
     spawnEnemy = pygame.USEREVENT + 2
 
     pygame.time.set_timer(spawnEnemy, 2000)
 
     running = True
+
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
 
-            # 自動生成敵機
+            # 生成敵機
             if event.type == spawnEnemy:
-                num_enemies = random.randint(1, 3)
+                num_enemies = random.randint(2, 8)
                 for _ in range(num_enemies):
                     ex = random.randint(50, screen_width - 50)
                     ey = -50
                     Enemies.append(Enemy(ex, ey, enemy_image))
 
-            # 自動發射飛彈
-            if event.type == launchMissile:
-                center_x = player.x + player.image.get_width() / 2 - 5
-                m_y = player.y
-                plane_left = center_x - 15
-                plane_right = center_x + 15
-                Missiles.append(MyMissile(xy=(plane_left, m_y), playground=playground, sensitivity=moving_scale))
-                Missiles.append(MyMissile(xy=(plane_right, m_y), playground=playground, sensitivity=moving_scale))
-
-            # 空白鍵發射
+            # 飛彈發射
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
                     center_x = player.x + player.image.get_width() / 2 - 5
                     m_y = player.y
                     plane_left = center_x - 15
                     plane_right = center_x + 15
-                    Missiles.append(MyMissile(xy=(plane_left, m_y), playground=playground, sensitivity=moving_scale))
-                    Missiles.append(MyMissile(xy=(plane_right, m_y), playground=playground, sensitivity=moving_scale))
+                    missile1 = MyMissile(xy=(plane_left, m_y), playground=playground, sensitivity=moving_scale)
+                    missile2 = MyMissile(xy=(plane_right, m_y), playground=playground, sensitivity=moving_scale)
+                    Missiles.append(missile1)
+                    Missiles.append(missile2)
                     pygame.time.set_timer(launchMissile, 400)
 
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_SPACE:
                     pygame.time.set_timer(launchMissile, 0)
 
-        # ✅ 正確檢查按鍵狀態（上下左右）
+        # 按鍵檢查（上下左右）
         keys = pygame.key.get_pressed()
         if keys[pygame.K_a]:
             player.to_the_left()
@@ -133,13 +157,21 @@ def main():
         for e in Enemies:
             e.update()
 
-        # 碰撞檢測
+        # 更新爆炸
+        Explosions = [ex for ex in Explosions if not ex.is_finished()]
+        for ex in Explosions:
+            ex.update()
+
+        # 碰撞檢測並增加分數
         for e in Enemies:
             for m in Missiles:
                 if e.rect.colliderect(pygame.Rect(m.xy, (m.image.get_width(), m.image.get_height()))):
+                    explosion = Explosion(e.x, e.y, explosion_image)
+                    Explosions.append(explosion)
                     e.hit = True
                     e.available = False
                     m.available = False
+                    score += 1  # 擊中敵機加分
 
         # 畫面更新
         screen.blit(background, (0, 0))
@@ -147,7 +179,12 @@ def main():
             e.draw(screen)
         for m in Missiles:
             screen.blit(m.image, m.xy)
+        for ex in Explosions:
+            ex.draw(screen)
         screen.blit(player.image, player.xy)
+
+        # 顯示分數
+        display_score(screen, score, font)
 
         pygame.display.update()
         clock.tick(fps)
