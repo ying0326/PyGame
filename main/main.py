@@ -11,7 +11,7 @@ class Explosion:
         self.y = y
         self.image = image
         self.counter = 0
-        self.duration = 20  # 爆炸效果持續20幀
+        self.duration = 20
 
     def update(self):
         self.counter += 1
@@ -31,8 +31,8 @@ class Enemy:
         self.rect = self.image.get_rect(topleft=(self.x, self.y))
         self.hit = False
         self.available = True
-        self.speed_x = random.randint(1, 5) * random.choice([-1, 1])
-        self.speed_y = random.randint(2, 6)
+        self.speed_x = random.randint(1, 3) * random.choice([-1, 1])
+        self.speed_y = random.randint(1, 4)
 
     def update(self):
         self.x += self.speed_x
@@ -50,9 +50,9 @@ class Enemy:
         if not self.hit:
             screen.blit(self.image, (self.x, self.y))
 
-# 顯示分數（紅色字體）
+# 顯示分數
 def display_score(screen, score, font):
-    score_text = font.render(f"Score: {score}", True, (255, 0, 0))  # 紅色字體
+    score_text = font.render(f"Score: {score}", True, (255, 0, 0))
     screen.blit(score_text, (screen.get_width() - 150, 10))
 
 def main():
@@ -114,7 +114,7 @@ def main():
             if event.type == spawnEnemy:
                 num_enemies = random.randint(2, 8)
                 for _ in range(num_enemies):
-                    ex = random.randint(50, screen_width - 50)
+                    ex = random.randint(50, screen_width - enemy_image.get_width() - 50)
                     ey = -50
                     Enemies.append(Enemy(ex, ey, enemy_image))
 
@@ -135,7 +135,7 @@ def main():
                 if event.key == pygame.K_SPACE:
                     pygame.time.set_timer(launchMissile, 0)
 
-        # 按鍵檢查（上下左右）
+        # 更新邏輯與顯示
         keys = pygame.key.get_pressed()
         if keys[pygame.K_a]:
             player.to_the_left()
@@ -146,23 +146,19 @@ def main():
         if keys[pygame.K_s]:
             player.to_the_bottom()
 
-        # 更新飛彈
+        # 更新物件
         player.update()
         Missiles = [m for m in Missiles if m.available]
         for m in Missiles:
             m.update()
-
-        # 更新敵機
         Enemies = [e for e in Enemies if e.available]
         for e in Enemies:
             e.update()
-
-        # 更新爆炸
         Explosions = [ex for ex in Explosions if not ex.is_finished()]
         for ex in Explosions:
             ex.update()
 
-        # 碰撞檢測並增加分數
+        # 碰撞檢測
         for e in Enemies:
             for m in Missiles:
                 if e.rect.colliderect(pygame.Rect(m.xy, (m.image.get_width(), m.image.get_height()))):
@@ -171,7 +167,7 @@ def main():
                     e.hit = True
                     e.available = False
                     m.available = False
-                    score += 1  # 擊中敵機加分
+                    score += 1
 
         # 畫面更新
         screen.blit(background, (0, 0))
@@ -182,8 +178,6 @@ def main():
         for ex in Explosions:
             ex.draw(screen)
         screen.blit(player.image, player.xy)
-
-        # 顯示分數
         display_score(screen, score, font)
 
         pygame.display.update()
