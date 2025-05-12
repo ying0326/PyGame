@@ -60,3 +60,7 @@ class MyMissile(GameObject):
     @property
     def available(self):
         return self._available
+
+    @available.setter
+    def available(self, value):
+        self._available = value
