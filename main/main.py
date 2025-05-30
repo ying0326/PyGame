@@ -70,6 +70,22 @@ def reset_game(screen_width, screen_height, playground):
 
 def main():
     pygame.init()
+    # === 背景音樂 ===
+    parent_path = Path(__file__).parents[1]
+    res_path = parent_path / 'res'
+    bgm_path = res_path / 'bgm.mp3'
+    pygame.mixer.init()
+    pygame.mixer.music.load(str(bgm_path))
+    pygame.mixer.music.play(-1)
+
+    explosion_sound_path = res_path / 'explosion.mp3'
+    explosion_sound = pygame.mixer.Sound(str(explosion_sound_path))
+    explosion_sound.set_volume(0.3)
+
+    gameover_sound_path = res_path / 'gameover.mp3'
+    gameover_sound = pygame.mixer.Sound(str(gameover_sound_path))
+    gameover_sound.set_volume(0.5)
+
     screen_width = 1000
     screen_height = 760
     screen = pygame.display.set_mode((screen_width, screen_height))
@@ -171,6 +187,7 @@ def main():
                         if not e.hit:
                             explosion = Explosion(e.x, e.y, explosion_image)
                             Explosions.append(explosion)
+                            explosion_sound.play()
                             e.hit = True
                             e.available = False
                             m.available = False
@@ -180,6 +197,7 @@ def main():
                 player_rect = pygame.Rect(player.x, player.y, player.image.get_width(), player.image.get_height())
                 if not e.hit and player_rect.colliderect(e.rect):
                     game_over = True
+                    gameover_sound.play()
 
             screen.blit(background, (0, 0))
             for e in Enemies:
