@@ -11,13 +11,28 @@ class Explosion:
         self.image = image
         self.counter = 0
         self.duration = 20
-
     def update(self):
         self.counter += 1
     def is_finished(self):
         return self.counter > self.duration
     def draw(self, screen):
         screen.blit(self.image, (self.x, self.y))
+
+# === 新增扣分特效類別 ===
+class DeductEffect:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.frame = 0
+        self.duration = 30   # 顯示 30 frame
+    def update(self):
+        self.frame += 1
+    def is_alive(self):
+        return self.frame < self.duration
+    def draw(self, screen, font):
+        text = font.render("-5", True, (255, 0, 0))
+        offset_y = max(0, 20 - self.frame // 2)   # 可讓字往上飄
+        screen.blit(text, (self.x, self.y - offset_y))
 
 class Enemy:
     def __init__(self, x, y, image):
@@ -27,9 +42,8 @@ class Enemy:
         self.rect = self.image.get_rect(topleft=(self.x, self.y))
         self.hit = False
         self.available = True
-        self.speed_x = random.choice([-1, 1]) * random.uniform(0.5, 2)  # 慢一點
+        self.speed_x = random.choice([-1, 1]) * random.uniform(0.5, 2)
         self.speed_y = random.uniform(0.5, 2)
-
     def update(self):
         self.x += self.speed_x
         self.y += self.speed_y
@@ -52,12 +66,20 @@ def display_game_over(screen, score, font):
     final_score_text = font.render(f"Final Score: {score}", True, (255, 255, 255))
     exit_text = font.render("Press ESC to Exit", True, (200, 200, 200))
     restart_text = font.render("Press R to Restart", True, (100, 255, 100))
-
     center_y = screen.get_height() // 2
     screen.blit(game_over_text, ((screen.get_width() - game_over_text.get_width()) // 2, center_y - 80))
     screen.blit(final_score_text, ((screen.get_width() - final_score_text.get_width()) // 2, center_y - 20))
     screen.blit(exit_text, ((screen.get_width() - exit_text.get_width()) // 2, center_y + 40))
     screen.blit(restart_text, ((screen.get_width() - restart_text.get_width()) // 2, center_y + 90))
+    pygame.display.flip()
+
+def display_start_screen(screen, font):
+    screen.fill((0, 0, 0))
+    title_text = font.render("Ocean Shooting Game", True, (255, 255, 0))
+    start_text = font.render("Press ENTER to Start", True, (255, 255, 255))
+    center_y = screen.get_height() // 2
+    screen.blit(title_text, ((screen.get_width() - title_text.get_width()) // 2, center_y - 60))
+    screen.blit(start_text, ((screen.get_width() - start_text.get_width()) // 2, center_y + 20))
     pygame.display.flip()
 
 def reset_game(screen_width, screen_height, playground):
@@ -87,13 +109,11 @@ def main():
     gameover_sound.set_volume(0.5)
 
     screen_width = 1000
-    screen_height = 760
+    screen_height = 750
     screen = pygame.display.set_mode((screen_width, screen_height))
     pygame.display.set_caption("pygame")
     playground = [screen_width, screen_height]
 
-    parent_path = Path(__file__).parents[1]
-    res_path = parent_path / 'res'
     icon_path = res_path / 'airplan.png'
     background_path = res_path / 'background.png'
     enemy_path = res_path / 'enemy.png'
@@ -117,10 +137,23 @@ def main():
     running = True
     game_over = False
 
+    # === 新增封面狀態 ===
+    in_start_screen = True
+
+    # === 新增扣分特效清單 ===
+    DeductEffects = []
+
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+
+            # === 開始畫面處理 ===
+            if in_start_screen:
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_RETURN or event.key == pygame.K_SPACE:
+                        in_start_screen = False
+                continue
 
             if game_over:
                 if event.type == pygame.KEYDOWN:
@@ -149,6 +182,12 @@ def main():
                     Missiles.append(missile1)
                     Missiles.append(missile2)
 
+        # === 開始畫面渲染 ===
+        if in_start_screen:
+            display_start_screen(screen, font)
+            clock.tick(30)
+            continue
+
         if not game_over:
             keys = pygame.key.get_pressed()
             if keys[pygame.K_a]:
@@ -164,7 +203,12 @@ def main():
             for m in Missiles:
                 m.update()
 
-            # ✅ 敵機如果飛出沒被打中，扣5分
+            # === 扣分特效更新 ===
+            DeductEffects = [eff for eff in DeductEffects if eff.is_alive()]
+            for eff in DeductEffects:
+                eff.update()
+
+            # 敵機如果飛出沒被打中，扣5分
             new_Enemies = []
             for e in Enemies:
                 prev_available = e.available
@@ -173,6 +217,8 @@ def main():
                     score -= 5
                     if score < 0:
                         score = 0
+                    # 顯示扣分效果（分數右上角附近）
+                    DeductEffects.append(DeductEffect(screen_width - 80, 40))
                 else:
                     new_Enemies.append(e)
             Enemies = new_Enemies
@@ -206,6 +252,9 @@ def main():
                 screen.blit(m.image, m.xy)
             for ex in Explosions:
                 ex.draw(screen)
+            # === 畫出扣分特效 ===
+            for eff in DeductEffects:
+                eff.draw(screen, font)
             screen.blit(player.image, player.xy)
             display_score(screen, score, font)
             pygame.display.update()
