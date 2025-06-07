@@ -3,7 +3,9 @@ import random
 from pathlib import Path
 from player import Player
 from MyMissile import MyMissile
+from gobject import GameObject
 
+# --- 爆炸特效類別 ---
 class Explosion:
     def __init__(self, x, y, image):
         self.x = x
@@ -18,7 +20,7 @@ class Explosion:
     def draw(self, screen):
         screen.blit(self.image, (self.x, self.y))
 
-# === 新增扣分特效類別 ===
+# --- 扣分特效類別 ---
 class DeductEffect:
     def __init__(self, x, y):
         self.x = x
@@ -34,27 +36,46 @@ class DeductEffect:
         offset_y = max(0, 20 - self.frame // 2)
         screen.blit(text, (self.x, self.y - offset_y))
 
-class Enemy:
-    def __init__(self, x, y, image):
-        self.x = x
-        self.y = y
-        self.image = image
-        self.rect = self.image.get_rect(topleft=(self.x, self.y))
+# --- 敵人類別 ---
+class Enemy(GameObject):
+    def __init__(self, x, y, image, playground):
+        super().__init__(playground)  # 呼叫父類 GameObject 建構式
+        self._x = x
+        self._y = y
+        self._image = image
         self.hit = False
-        self.available = True
+        self._available = True
         self.speed_x = random.choice([-1, 1]) * random.uniform(0.5, 2)
         self.speed_y = random.uniform(0.5, 2)
+        rect = self._image.get_rect()
+        self._center = (self._x + rect.w / 2, self._y + rect.h / 2)
+        self._radius = 0.4 * min(rect.w, rect.h)
+        self._objectBound = (
+            0,
+            playground[0] - rect.w,
+            -rect.h,
+            playground[1]
+        )
     def update(self):
-        self.x += self.speed_x
-        self.y += self.speed_y
-        if self.x <= 0 or self.x + self.image.get_width() >= 1000:
+        self._x += self.speed_x
+        self._y += self.speed_y
+        # 左右反彈
+        if self._x <= 0 or self._x + self._image.get_width() >= self._playground[0]:
             self.speed_x *= -1
-        self.rect.topleft = (self.x, self.y)
-        if self.y > 760:
-            self.available = False
+        rect = self._image.get_rect()
+        self._center = (self._x + rect.w / 2, self._y + rect.h / 2)
+        # 落到底部消失
+        if self._y > self._playground[1] + 10:
+            self._available = False
     def draw(self, screen):
         if not self.hit:
-            screen.blit(self.image, (self.x, self.y))
+            screen.blit(self._image, (self._x, self._y))
+    @property
+    def available(self):
+        return self._available
+    @available.setter
+    def available(self, value):
+        self._available = value
 
 def display_score(screen, score, font):
     score_text = font.render(f"Score: {score}", True, (255, 0, 0))  # 紅色
@@ -165,7 +186,7 @@ def main():
                 for _ in range(num_enemies):
                     ex = random.randint(50, screen_width - enemy_image.get_width() - 50)
                     ey = -50
-                    Enemies.append(Enemy(ex, ey, enemy_image))
+                    Enemies.append(Enemy(ex, ey, enemy_image, playground))  # 新增 playground 傳給 Enemy
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
@@ -220,9 +241,10 @@ def main():
                 ex.update()
             for e in Enemies:
                 for m in Missiles:
-                    if e.rect.colliderect(pygame.Rect(m.xy, (m.image.get_width(), m.image.get_height()))):
+                    if pygame.Rect(e._x, e._y, e._image.get_width(), e._image.get_height()).colliderect(
+                            pygame.Rect(m.xy, (m.image.get_width(), m.image.get_height()))):
                         if not e.hit:
-                            explosion = Explosion(e.x, e.y, explosion_image)
+                            explosion = Explosion(e._x, e._y, explosion_image)
                             Explosions.append(explosion)
                             explosion_sound.play()
                             e.hit = True
@@ -231,7 +253,8 @@ def main():
                             score += 10
             for e in Enemies:
                 player_rect = pygame.Rect(player.x, player.y, player.image.get_width(), player.image.get_height())
-                if not e.hit and player_rect.colliderect(e.rect):
+                if not e.hit and player_rect.colliderect(
+                        pygame.Rect(e._x, e._y, e._image.get_width(), e._image.get_height())):
                     game_over = True
                     gameover_sound.play()
 

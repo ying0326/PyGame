@@ -22,16 +22,16 @@ class GameObject:
         self._radius = None  # 碰撞半徑
         self._collided = False  # 是否產生碰撞
 
-    # Python提供的getter
+    # x座標 getter/setter
     @property
     def x(self):
         return self._x
 
-    # Python提供的setter
     @x.setter
     def x(self, value):
         self._x = value
 
+    # y座標 getter/setter
     @property
     def y(self):
         return self._y
@@ -40,15 +40,26 @@ class GameObject:
     def y(self, value):
         self._y = value
 
+    # 物件圖片 getter
     @property
     def image(self):
         return self._image
 
+    # 位置座標 getter
     @property
     def xy(self):
         return (self._x, self._y)
 
+    # 物件存活狀態 getter/setter
+    @property
+    def available(self):
+        return self._available
 
+    @available.setter
+    def available(self, value):
+        self._available = value
+
+    # 四向移動指令
     def to_the_left(self):
         self._changeX = -self._moveScale
 
@@ -67,10 +78,12 @@ class GameObject:
     def stop_y(self):
         self._changeY = 0
 
+    # 每一幀更新位置
     def update(self):
         self.x += self._changeX
         self.y += self._changeY
 
+        # 邊界檢查
         if self.x > self._objectBound[1]:
             self.x = self._objectBound[1]
         if self.x < self._objectBound[0]:
@@ -80,6 +93,7 @@ class GameObject:
         if self.y < self._objectBound[2]:
             self.y = self._objectBound[2]
 
+    # 圓形碰撞判斷
     def _collided_(self, it):
         distance = math.hypot(
             self._center[0] - it.center[0],
